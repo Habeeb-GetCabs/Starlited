@@ -248,7 +248,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
               }}
               className="w-full rounded-full bg-[#5A0D3F] py-3.5 text-sm font-semibold text-white hover:bg-[#7A1554] transition-colors"
             >
-              Proceed to Checkout (Demo) · {formatINR(totals.grandTotal)}
+              Proceed to Checkout · {formatINR(totals.grandTotal)}
             </button>
           </div>
         )}

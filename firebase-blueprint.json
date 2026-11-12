@@ -1,0 +1,238 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A clothing product in the STARLITES CLOTHING catalog.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "slug": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "name": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "category": {
+          "type": "string",
+          "enum": [
+            "innerwear",
+            "tops-14-plus",
+            "two-piece-sets",
+            "three-piece-sets",
+            "nightwear-nighties",
+            "pajamas",
+            "maternity-wear",
+            "umbrella-long-tops",
+            "maxi-dresses"
+          ]
+        },
+        "description": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "fabricCare": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "sellingPrice": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "sizes": { "type": "array", "description": "Available sizes (max 7)." },
+        "colors": { "type": "array", "description": "Available color objects (max 15)." },
+        "status": { "type": "string", "enum": ["active", "draft", "out_of_stock"] },
+        "isNewArrival": { "type": "boolean" },
+        "isBestSeller": { "type": "boolean" },
+        "popularityScore": { "type": "number" },
+        "images": { "type": "array", "description": "Image references (max 10)." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "slug",
+        "name",
+        "category",
+        "description",
+        "fabricCare",
+        "sellingPrice",
+        "originalPrice",
+        "sizes",
+        "colors",
+        "status",
+        "isNewArrival",
+        "isBestSeller",
+        "popularityScore",
+        "images",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MediaAsset": {
+      "title": "MediaAsset",
+      "description": "Compressed product photograph uploaded via the Admin Portal.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "dataUrl": { "type": "string", "minLength": 10, "maxLength": 500000 },
+        "mimeType": { "type": "string", "minLength": 5, "maxLength": 64 },
+        "fileName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "uploadedBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "dataUrl", "mimeType", "fileName", "uploadedBy", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer order placed via Cash on Delivery or Manual UPI.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderCode": { "type": "string", "minLength": 6, "maxLength": 32, "pattern": "^[A-Z0-9\\-]+$" },
+        "isGuest": { "type": "boolean" },
+        "customerUid": { "type": "string", "maxLength": 128 },
+        "customerEmail": { "type": "string", "maxLength": 160 },
+        "customerName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "phone": { "type": "string", "minLength": 10, "maxLength": 20 },
+        "address": { "type": "string", "minLength": 5, "maxLength": 400 },
+        "city": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "pincode": { "type": "string", "minLength": 4, "maxLength": 12 },
+        "notes": { "type": "string", "maxLength": 400 },
+        "paymentMethod": { "type": "string", "enum": ["cod", "upi_manual"] },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "confirmed", "packed", "shipped", "delivered", "cancelled"]
+        },
+        "itemCount": { "type": "number" },
+        "subtotal": { "type": "number" },
+        "shippingFee": { "type": "number" },
+        "grandTotal": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "orderCode",
+        "isGuest",
+        "customerName",
+        "phone",
+        "address",
+        "city",
+        "pincode",
+        "paymentMethod",
+        "status",
+        "itemCount",
+        "subtotal",
+        "shippingFee",
+        "grandTotal",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OrderItem": {
+      "title": "OrderItem",
+      "description": "Line item belonging to a customer order.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "customerUid": { "type": "string", "maxLength": 128 },
+        "productId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "productName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "size": { "type": "string", "minLength": 1, "maxLength": 24 },
+        "colorName": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "colorHex": { "type": "string", "minLength": 4, "maxLength": 16 },
+        "unitPrice": { "type": "number" },
+        "quantity": { "type": "number" },
+        "lineTotal": { "type": "number" }
+      },
+      "required": [
+        "id",
+        "orderId",
+        "customerUid",
+        "productId",
+        "productName",
+        "size",
+        "colorName",
+        "colorHex",
+        "unitPrice",
+        "quantity",
+        "lineTotal"
+      ]
+    },
+    "OrderTracking": {
+      "title": "OrderTracking",
+      "description": "Non-PII public order status lookup keyed by orderCode.",
+      "type": "object",
+      "properties": {
+        "orderId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "orderCode": { "type": "string", "minLength": 6, "maxLength": 32, "pattern": "^[A-Z0-9\\-]+$" },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "confirmed", "packed", "shipped", "delivered", "cancelled"]
+        },
+        "paymentMethod": { "type": "string", "enum": ["cod", "upi_manual"] },
+        "itemCount": { "type": "number" },
+        "grandTotal": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "orderId",
+        "orderCode",
+        "status",
+        "paymentMethod",
+        "itemCount",
+        "grandTotal",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Signed-in customer profile and saved delivery preferences.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 120 },
+        "email": { "type": "string", "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "defaultAddress": { "type": "string", "maxLength": 400 },
+        "defaultCity": { "type": "string", "maxLength": 100 },
+        "defaultPincode": { "type": "string", "maxLength": 12 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "createdAt", "updatedAt"]
+    },
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Authorized store administrator UID record.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 160 },
+        "grantedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "grantedAt"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Shared storefront catalog products."
+    },
+    "/media/{mediaId}": {
+      "schema": { "$ref": "#/entities/MediaAsset" },
+      "description": "Uploaded product images shared across storefront visitors."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Customer orders containing shipping details and totals."
+    },
+    "/orders/{orderId}/items/{itemId}": {
+      "schema": { "$ref": "#/entities/OrderItem" },
+      "description": "Line items belonging to an order."
+    },
+    "/order_tracking/{orderCode}": {
+      "schema": { "$ref": "#/entities/OrderTracking" },
+      "description": "Non-PII order status tracking by orderCode."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private customer profile and default shipping address."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Authorized administrator registry."
+    }
+  }
+}

@@ -52,8 +52,8 @@ export const ResolvedImage: React.FC<ResolvedImageProps> = ({
       return;
     }
 
-    if (image.source === 'indexeddb') {
-      getImageObjectUrl(image.id).then((url) => {
+    if (image.source === 'indexeddb' || image.source === 'firestore_media') {
+      getImageObjectUrl(image.id, image.source).then((url) => {
         if (active) {
           setResolvedSrc(url);
         }

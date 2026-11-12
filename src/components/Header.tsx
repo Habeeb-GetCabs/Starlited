@@ -16,6 +16,7 @@ interface HeaderProps {
   searchQuery: string;
   wishlistCount: number;
   cartCount: number;
+  isSignedIn?: boolean;
   onNavigate: (route: AppRoute) => void;
   onSearchSubmit: (query: string) => void;
   onOpenWishlist: () => void;
@@ -28,6 +29,7 @@ export const Header: React.FC<HeaderProps> = ({
   searchQuery,
   wishlistCount,
   cartCount,
+  isSignedIn = false,
   onNavigate,
   onSearchSubmit,
   onOpenWishlist,
@@ -126,10 +128,16 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onOpenAccount}
-              aria-label="Customer account demo"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[#3D162D] hover:bg-[#F8EEF2] transition-colors focus-visible:outline-2 focus-visible:outline-[#5A0D3F]"
+              aria-label={isSignedIn ? 'Your account' : 'Sign in or track order'}
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-[#3D162D] hover:bg-[#F8EEF2] transition-colors focus-visible:outline-2 focus-visible:outline-[#5A0D3F]"
             >
               <User className="h-5 w-5" />
+              {isSignedIn && (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[#21593A] ring-2 ring-white"
+                />
+              )}
             </button>
 
             <button
@@ -306,6 +314,16 @@ export const Header: React.FC<HeaderProps> = ({
               ))}
 
               <div className="mt-4 pt-4 border-t border-[#EFE3E9] flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onNavigate({ view: 'orders' });
+                    setMobileMenuOpen(false);
+                  }}
+                  className="rounded-xl px-4 py-2.5 text-left text-sm font-medium text-[#5A0D3F] hover:bg-[#F8EEF2]/60"
+                >
+                  Track Order / My Orders
+                </button>
                 <button
                   type="button"
                   onClick={() => {

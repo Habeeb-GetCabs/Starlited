@@ -70,6 +70,15 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <li>
                 <button
                   type="button"
+                  onClick={() => onNavigate({ view: 'orders' })}
+                  className="hover:text-white transition-colors text-left"
+                >
+                  Track Order
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
                   onClick={() => onNavigate({ view: 'info', page: 'faq' })}
                   className="hover:text-white transition-colors text-left"
                 >
@@ -202,7 +211,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             onClick={() => onNavigate({ view: 'admin' })}
             className="text-[11px] text-[#C8A8BA] underline underline-offset-4 hover:text-white transition-colors"
           >
-            Store Owner Demo Portal
+            Store Owner Portal
           </button>
         </div>
       </div>

@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AccountDemoModal } from './components/AccountDemoModal';
+import { AccountModal } from './components/AccountModal';
 import { AdminPage } from './components/AdminPage';
 import { CartDrawer } from './components/CartDrawer';
 import { CatalogPage } from './components/CatalogPage';
-import { CheckoutDemoPage } from './components/CheckoutDemoPage';
+import { CheckoutPage } from './components/CheckoutPage';
 import { Footer } from './components/Footer';
 import { Header } from './components/Header';
 import { HomePage } from './components/HomePage';
 import { InfoPages } from './components/InfoPages';
+import { OrdersPage } from './components/OrdersPage';
 import { ProductDetailsPage } from './components/ProductDetailsPage';
 import { WishlistDrawer } from './components/WishlistDrawer';
+import { subscribeToAuthState, type AuthSessionState } from './services/authService';
 import {
   addItemToCart,
   removeCartItem,
@@ -21,6 +23,7 @@ import {
   loadProducts,
   removeProductById,
   resetCatalogToDefaults,
+  subscribeProducts,
   upsertProduct,
 } from './services/productService';
 import { loadWishlist, saveWishlist } from './services/wishlistService';
@@ -31,6 +34,10 @@ function parseRouteFromHash(): AppRoute {
   if (!raw || raw === '/') return { view: 'home' };
   if (raw === '/admin') return { view: 'admin' };
   if (raw === '/checkout') return { view: 'checkout' };
+  if (raw === '/orders') return { view: 'orders' };
+  if (raw.startsWith('/orders/')) {
+    return { view: 'orders', orderCode: decodeURIComponent(raw.slice('/orders/'.length)) };
+  }
   if (raw.startsWith('/product/')) {
     return { view: 'product', productId: decodeURIComponent(raw.slice('/product/'.length)) };
   }
@@ -67,6 +74,8 @@ function serializeRouteToHash(route: AppRoute): string {
       return '#/admin';
     case 'checkout':
       return '#/checkout';
+    case 'orders':
+      return route.orderCode ? `#/orders/${encodeURIComponent(route.orderCode)}` : '#/orders';
     case 'product':
       return `#/product/${encodeURIComponent(route.productId)}`;
     case 'info':
@@ -85,11 +94,17 @@ function serializeRouteToHash(route: AppRoute): string {
 }
 
 export default function App() {
+  const [authState, setAuthState] = useState<AuthSessionState>({
+    ready: false,
+    user: null,
+    isAdmin: false,
+    profile: null,
+  });
   const [products, setProducts] = useState<Product[]>(() => loadProducts());
+  const [isCloudCatalog, setIsCloudCatalog] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>(() => loadCart());
   const [wishlistIds, setWishlistIds] = useState<string[]>(() => loadWishlist());
   const [route, setRoute] = useState<AppRoute>(() => {
-    // Support both #/admin and /admin path entry
     if (window.location.pathname === '/admin') return { view: 'admin' };
     return parseRouteFromHash();
   });
@@ -97,6 +112,26 @@ export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+
+  // Firebase Authentication listener
+  useEffect(() => {
+    return subscribeToAuthState(setAuthState);
+  }, []);
+
+  // Firestore real-time product catalog sync
+  useEffect(() => {
+    if (!authState.ready) return;
+    return subscribeProducts(
+      authState.isAdmin,
+      (cloudProducts, fromCloud) => {
+        setProducts(cloudProducts);
+        setIsCloudCatalog(fromCloud);
+      },
+      () => {
+        // Keep cached/seed products if offline
+      }
+    );
+  }, [authState.ready, authState.isAdmin]);
 
   // Sync hash changes (browser back/forward)
   useEffect(() => {
@@ -167,15 +202,19 @@ export default function App() {
     setCartItems((prev) => removeCartItem(prev, key));
   }, []);
 
-  const handleSaveProduct = useCallback((product: Product) => {
+  const handleClearCart = useCallback(() => {
+    setCartItems([]);
+  }, []);
+
+  const handleSaveProductLocal = useCallback((product: Product) => {
     setProducts((prev) => upsertProduct(prev, product));
   }, []);
 
-  const handleDeleteProduct = useCallback((productId: string) => {
+  const handleDeleteProductLocal = useCallback((productId: string) => {
     setProducts((prev) => removeProductById(prev, productId));
   }, []);
 
-  const handleResetCatalog = useCallback(() => {
+  const handleResetCatalogLocal = useCallback(() => {
     setProducts(resetCatalogToDefaults());
   }, []);
 
@@ -188,6 +227,7 @@ export default function App() {
         searchQuery={currentSearchQuery}
         wishlistCount={wishlistIds.length}
         cartCount={totalCartItems}
+        isSignedIn={Boolean(authState.user)}
         onNavigate={navigate}
         onSearchSubmit={handleSearchSubmit}
         onOpenWishlist={() => setWishlistOpen(true)}
@@ -232,9 +272,19 @@ export default function App() {
         )}
 
         {route.view === 'checkout' && (
-          <CheckoutDemoPage
+          <CheckoutPage
             items={cartItems}
             productsById={productsById}
+            authState={authState}
+            onClearCart={handleClearCart}
+            onNavigate={navigate}
+          />
+        )}
+
+        {route.view === 'orders' && (
+          <OrdersPage
+            authState={authState}
+            initialOrderCode={route.orderCode}
             onNavigate={navigate}
           />
         )}
@@ -242,9 +292,11 @@ export default function App() {
         {route.view === 'admin' && (
           <AdminPage
             products={products}
-            onSaveProduct={handleSaveProduct}
-            onDeleteProduct={handleDeleteProduct}
-            onResetCatalog={handleResetCatalog}
+            isCloudCatalog={isCloudCatalog}
+            authState={authState}
+            onSaveProductLocal={handleSaveProductLocal}
+            onDeleteProductLocal={handleDeleteProductLocal}
+            onResetCatalogLocal={handleResetCatalogLocal}
             onNavigate={navigate}
           />
         )}
@@ -279,8 +331,9 @@ export default function App() {
         }}
       />
 
-      <AccountDemoModal
+      <AccountModal
         open={accountOpen}
+        authState={authState}
         onClose={() => setAccountOpen(false)}
         onNavigate={navigate}
       />

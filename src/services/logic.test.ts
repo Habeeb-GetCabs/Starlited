@@ -1,99 +1,107 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  calculateCartTotals,
-  calculateDiscountPercent,
-  formatINR,
-  FREE_SHIPPING_THRESHOLD_INR,
-  STANDARD_SHIPPING_FEE_INR,
-} from './pricingLogic';
+import test from 'node:test';
+import { addItemToCart, removeCartItem, toggleWishlistId, updateCartItemQty } from './cartLogic.ts';
 import {
   CATEGORIES,
   filterProducts,
+  getPrimaryImage,
   getRelatedProducts,
   sortProducts,
-} from './catalogLogic';
+} from './catalogLogic.ts';
 import {
-  addItemToCart,
-  removeCartItem,
-  toggleWishlistId,
-  updateCartItemQty,
-} from './cartLogic';
-import type { Product } from '../types/store';
+  buildOrderWhatsAppUrl,
+  canCustomerCancelOrder,
+  generateOrderCode,
+  normalizeIndianPhone,
+  validateCheckoutInput,
+} from './orderLogic.ts';
+import {
+  FREE_SHIPPING_THRESHOLD_INR,
+  STANDARD_SHIPPING_FEE_INR,
+  calculateCartTotals,
+  calculateDiscountPercent,
+  formatINR,
+} from './pricingLogic.ts';
+import type { Product } from '../types/store.ts';
 
-const sampleProducts: Product[] = [
-  {
+function makeProduct(overrides: Partial<Product>): Product {
+  return {
     id: 'p1',
-    slug: 'floral-top',
-    name: 'Floral Everyday Top',
+    slug: 'p1',
+    name: 'Sample Top',
     category: 'tops-14-plus',
-    description: 'Soft breathable cotton floral top',
+    description: 'Comfortable cotton everyday wear',
     fabricCare: '100% Cotton',
     sellingPrice: 599,
     originalPrice: 799,
-    sizes: ['S', 'M', 'L', 'XL'],
-    colors: [{ name: 'Rose Pink', hex: '#D47B96' }],
+    sizes: ['S', 'M', 'L'],
+    colors: [{ name: 'Rose Pink', hex: '#C66B8E' }],
     status: 'active',
     isNewArrival: true,
     isBestSeller: false,
-    popularityScore: 92,
-    createdAt: '2026-10-10T10:00:00Z',
-    images: [{ id: 'i1', source: 'asset', assetKey: 'cat_tops_14plus', isPrimary: true }],
-  },
-  {
-    id: 'p2',
-    slug: 'pastel-coord',
-    name: 'Pastel Co-ord Set',
-    category: 'two-piece-sets',
-    description: 'Relaxed lavender 2-piece set',
-    fabricCare: 'Cotton Linen',
-    sellingPrice: 1099,
-    originalPrice: 1499,
-    sizes: ['M', 'L', 'XL'],
-    colors: [
-      { name: 'Lavender', hex: '#B99FD2' },
-      { name: 'Plum', hex: '#5A0D3F' },
-    ],
-    status: 'active',
-    isNewArrival: true,
-    isBestSeller: true,
-    popularityScore: 98,
-    createdAt: '2026-10-12T10:00:00Z',
-    images: [{ id: 'i2', source: 'asset', assetKey: 'cat_two_piece_sets', isPrimary: true }],
-  },
-  {
-    id: 'p3',
-    slug: 'draft-item',
-    name: 'Hidden Draft Kurti',
-    category: 'tops-14-plus',
-    description: 'Draft item',
-    fabricCare: 'Cotton',
-    sellingPrice: 899,
-    originalPrice: 999,
-    sizes: ['S'],
-    colors: [{ name: 'Ivory', hex: '#FDFBF9' }],
-    status: 'draft',
-    isNewArrival: false,
-    isBestSeller: false,
-    popularityScore: 10,
-    createdAt: '2026-10-14T10:00:00Z',
-    images: [],
-  },
-];
+    popularityScore: 80,
+    createdAt: '2026-01-10T10:00:00.000Z',
+    images: [{ id: 'img1', source: 'asset', assetKey: 'cat_tops_14plus', isPrimary: true }],
+    ...overrides,
+  };
+}
 
-test('discount calculation and INR formatting', () => {
+test('pricingLogic computes discount percentage, INR formatting, and free shipping threshold', () => {
   assert.equal(calculateDiscountPercent(599, 799), 25);
-  assert.equal(calculateDiscountPercent(999, 999), 0);
-  assert.equal(calculateDiscountPercent(1200, 999), 0);
+  assert.equal(calculateDiscountPercent(1000, 1000), 0);
+  assert.equal(calculateDiscountPercent(500, 0), 0);
   assert.equal(formatINR(1599), '₹1,599');
+
+  const p1 = makeProduct({ id: 'p1', sellingPrice: 599 });
+  const p2 = makeProduct({ id: 'p2', sellingPrice: 499 });
+  const byId = { p1, p2 };
+
+  const belowFree = calculateCartTotals(
+    [{ key: 'p1__M__Rose', productId: 'p1', size: 'M', colorName: 'Rose', colorHex: '#C66B8E', quantity: 1, addedAt: '2026-01-01' }],
+    byId
+  );
+  assert.equal(belowFree.subtotal, 599);
+  assert.equal(belowFree.shippingFee, STANDARD_SHIPPING_FEE_INR);
+  assert.equal(belowFree.grandTotal, 599 + STANDARD_SHIPPING_FEE_INR);
+  assert.equal(belowFree.amountToFreeShipping, FREE_SHIPPING_THRESHOLD_INR - 599);
+
+  const aboveFree = calculateCartTotals(
+    [
+      { key: 'p1__M__Rose', productId: 'p1', size: 'M', colorName: 'Rose', colorHex: '#C66B8E', quantity: 1, addedAt: '2026-01-01' },
+      { key: 'p2__L__Plum', productId: 'p2', size: 'L', colorName: 'Plum', colorHex: '#5A0D3F', quantity: 1, addedAt: '2026-01-01' },
+    ],
+    byId
+  );
+  assert.equal(aboveFree.subtotal, 1098);
+  assert.equal(aboveFree.shippingFee, 0);
+  assert.equal(aboveFree.grandTotal, 1098);
+  assert.equal(aboveFree.totalItems, 2);
 });
 
-test('all 9 requested categories are configured', () => {
+test('catalogLogic defines all 9 required categories and filters accurately', () => {
   assert.equal(CATEGORIES.length, 9);
-});
+  const slugs = CATEGORIES.map((c) => c.slug);
+  for (const expected of [
+    'innerwear',
+    'tops-14-plus',
+    'two-piece-sets',
+    'three-piece-sets',
+    'nightwear-nighties',
+    'pajamas',
+    'maternity-wear',
+    'umbrella-long-tops',
+    'maxi-dresses',
+  ]) {
+    assert.ok(slugs.includes(expected as Product['category']), `Missing category ${expected}`);
+  }
 
-test('catalog filtering hides drafts by default and matches query, category, size, color, price', () => {
-  const activeOnly = filterProducts(sampleProducts, {
+  const catalog: Product[] = [
+    makeProduct({ id: 'a', name: 'Floral Top', category: 'tops-14-plus', sellingPrice: 599, sizes: ['S', 'M'] }),
+    makeProduct({ id: 'b', name: 'Comfort Nightie', category: 'nightwear-nighties', sellingPrice: 899, sizes: ['L', 'XL'], colors: [{ name: 'Deep Plum', hex: '#5A0D3F' }] }),
+    makeProduct({ id: 'c', name: 'Draft Item', category: 'maxi-dresses', status: 'draft', sellingPrice: 1299 }),
+  ];
+
+  const publicOnly = filterProducts(catalog, {
     category: 'all',
     query: '',
     sizes: [],
@@ -101,130 +109,150 @@ test('catalog filtering hides drafts by default and matches query, category, siz
     minPrice: null,
     maxPrice: null,
   });
-  assert.equal(activeOnly.length, 2);
+  assert.equal(publicOnly.length, 2);
 
-  const searchTwoPiece = filterProducts(sampleProducts, {
+  const byQuery = filterProducts(catalog, {
     category: 'all',
-    query: 'lavender',
+    query: 'nightie',
     sizes: [],
     colors: [],
     minPrice: null,
     maxPrice: null,
   });
-  assert.deepEqual(
-    searchTwoPiece.map((p) => p.id),
-    ['p2']
-  );
+  assert.deepEqual(byQuery.map((p) => p.id), ['b']);
 
-  const bySizeAndPrice = filterProducts(sampleProducts, {
+  const bySizeAndPrice = filterProducts(catalog, {
     category: 'all',
     query: '',
-    sizes: ['S'],
-    colors: [],
-    minPrice: 400,
-    maxPrice: 700,
+    sizes: ['L'],
+    colors: ['Deep Plum'],
+    minPrice: 800,
+    maxPrice: 1000,
   });
-  assert.deepEqual(
-    bySizeAndPrice.map((p) => p.id),
-    ['p1']
-  );
-
-  const byColor = filterProducts(sampleProducts, {
-    category: 'all',
-    query: '',
-    sizes: [],
-    colors: ['Plum'],
-    minPrice: null,
-    maxPrice: null,
-  });
-  assert.deepEqual(
-    byColor.map((p) => p.id),
-    ['p2']
-  );
+  assert.deepEqual(bySizeAndPrice.map((p) => p.id), ['b']);
 });
 
-test('catalog sorting orders properly', () => {
-  const byPriceAsc = sortProducts(sampleProducts.slice(0, 2), 'price-asc');
-  assert.deepEqual(
-    byPriceAsc.map((p) => p.id),
-    ['p1', 'p2']
-  );
+test('catalogLogic sorting, primary image selection, and related products work consistently', () => {
+  const p1 = makeProduct({
+    id: 'p1',
+    sellingPrice: 999,
+    popularityScore: 70,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    images: [
+      { id: 'i1', source: 'asset', assetKey: 'k1', isPrimary: false },
+      { id: 'i2', source: 'asset', assetKey: 'k2', isPrimary: true },
+    ],
+  });
+  const p2 = makeProduct({
+    id: 'p2',
+    sellingPrice: 499,
+    popularityScore: 98,
+    createdAt: '2026-02-01T00:00:00.000Z',
+  });
 
-  const byPriceDesc = sortProducts(sampleProducts.slice(0, 2), 'price-desc');
-  assert.deepEqual(
-    byPriceDesc.map((p) => p.id),
-    ['p2', 'p1']
-  );
-
-  const byNewest = sortProducts(sampleProducts.slice(0, 2), 'newest');
-  assert.deepEqual(
-    byNewest.map((p) => p.id),
-    ['p2', 'p1']
-  );
+  assert.equal(getPrimaryImage(p1)?.id, 'i2');
+  assert.deepEqual(sortProducts([p1, p2], 'price-asc').map((p) => p.id), ['p2', 'p1']);
+  assert.deepEqual(sortProducts([p1, p2], 'price-desc').map((p) => p.id), ['p1', 'p2']);
+  assert.deepEqual(sortProducts([p1, p2], 'popularity').map((p) => p.id), ['p2', 'p1']);
+  assert.deepEqual(sortProducts([p1, p2], 'newest').map((p) => p.id), ['p2', 'p1']);
+  assert.deepEqual(getRelatedProducts([p1, p2], p1, 4).map((p) => p.id), ['p2']);
 });
 
-test('cart add, quantity increment/decrement, remove, and free shipping calculation', () => {
-  const productsById = Object.fromEntries(sampleProducts.map((p) => [p.id, p]));
+test('cartLogic merges identical variant lines, increments/decrements, and toggles wishlist', () => {
   let cart = addItemToCart([], {
     productId: 'p1',
     size: 'M',
     colorName: 'Rose Pink',
-    colorHex: '#D47B96',
+    colorHex: '#C66B8E',
     quantity: 1,
   });
   assert.equal(cart.length, 1);
+  assert.equal(cart[0].quantity, 1);
 
-  // Adding same product + size + color increments quantity
   cart = addItemToCart(cart, {
     productId: 'p1',
     size: 'M',
     colorName: 'Rose Pink',
-    colorHex: '#D47B96',
-    quantity: 1,
+    colorHex: '#C66B8E',
+    quantity: 2,
   });
   assert.equal(cart.length, 1);
-  assert.equal(cart[0].quantity, 2);
+  assert.equal(cart[0].quantity, 3);
 
-  // Totals above 999 qualify for free shipping (599 * 2 = 1198)
-  const totalsFree = calculateCartTotals(cart, productsById);
-  assert.equal(totalsFree.subtotal, 1198);
-  assert.equal(totalsFree.qualifiesForFreeShipping, true);
-  assert.equal(totalsFree.shippingFee, 0);
-  assert.equal(totalsFree.totalSavings, 400);
-
-  // Decrement to 1 -> subtotal 599 -> below 999 -> shipping fee applies
-  cart = updateCartItemQty(cart, cart[0].key, -1);
-  const totalsPaidShip = calculateCartTotals(cart, productsById);
-  assert.equal(totalsPaidShip.subtotal, 599);
-  assert.equal(totalsPaidShip.qualifiesForFreeShipping, false);
-  assert.equal(totalsPaidShip.shippingFee, STANDARD_SHIPPING_FEE_INR);
-  assert.equal(totalsPaidShip.amountToFreeShipping, FREE_SHIPPING_THRESHOLD_INR - 599);
-
-  // Different size creates distinct line item
   cart = addItemToCart(cart, {
     productId: 'p1',
     size: 'L',
     colorName: 'Rose Pink',
-    colorHex: '#D47B96',
+    colorHex: '#C66B8E',
     quantity: 1,
   });
   assert.equal(cart.length, 2);
 
-  cart = removeCartItem(cart, cart[0].key);
+  cart = updateCartItemQty(cart, cart[0].key, -3);
   assert.equal(cart.length, 1);
+
+  cart = removeCartItem(cart, cart[0].key);
+  assert.equal(cart.length, 0);
+
+  const w1 = toggleWishlistId([], 'p1');
+  assert.deepEqual(w1, ['p1']);
+  const w2 = toggleWishlistId(w1, 'p1');
+  assert.deepEqual(w2, []);
 });
 
-test('wishlist toggle and related products', () => {
-  let wishlist = toggleWishlistId([], 'p1');
-  assert.deepEqual(wishlist, ['p1']);
-  wishlist = toggleWishlistId(wishlist, 'p2');
-  assert.deepEqual(wishlist, ['p2', 'p1']);
-  wishlist = toggleWishlistId(wishlist, 'p1');
-  assert.deepEqual(wishlist, ['p2']);
+test('orderLogic validates checkout input, normalizes phone, generates order codes, and builds WhatsApp links', () => {
+  const code = generateOrderCode(new Date('2026-11-12T12:00:00.000Z'));
+  assert.match(code, /^SL-\d{6}-[A-Z0-9]{4}$/);
 
-  const related = getRelatedProducts(sampleProducts, sampleProducts[0], 4);
-  assert.deepEqual(
-    related.map((p) => p.id),
-    ['p2']
-  );
+  assert.equal(normalizeIndianPhone('+91 88077-32182'), '8807732182');
+
+  const invalidPhone = validateCheckoutInput({
+    customerName: 'Ananya',
+    phone: '12345',
+    address: '12 Main Street',
+    city: 'Tiruchirappalli',
+    pincode: '620017',
+    notes: '',
+    paymentMethod: 'cod',
+    itemCount: 1,
+  });
+  assert.equal(invalidPhone.valid, false);
+
+  const valid = validateCheckoutInput({
+    customerName: 'Ananya Krishnan',
+    phone: '9876543210',
+    address: '12 Anna Nagar Main Road',
+    city: 'Tiruchirappalli, Tamil Nadu',
+    pincode: '620017',
+    notes: 'Call before delivery',
+    paymentMethod: 'upi_manual',
+    itemCount: 2,
+  });
+  assert.equal(valid.valid, true);
+
+  assert.equal(canCustomerCancelOrder('pending'), true);
+  assert.equal(canCustomerCancelOrder('confirmed'), false);
+  assert.equal(canCustomerCancelOrder('delivered'), false);
+
+  const waUrl = buildOrderWhatsAppUrl({
+    orderCode: 'SL-261112-AB12',
+    customerName: 'Ananya',
+    phone: '9876543210',
+    address: '12 Anna Nagar',
+    city: 'Trichy',
+    pincode: '620017',
+    paymentMethod: 'cod',
+    grandTotal: 1099,
+    items: [
+      {
+        productName: 'Botanical Cotton 2-Piece Set',
+        size: 'M',
+        colorName: 'Blush Rose',
+        quantity: 1,
+        lineTotal: 1099,
+      },
+    ],
+  });
+  assert.ok(waUrl.startsWith('https://wa.me/918807732182?text='));
+  assert.ok(decodeURIComponent(waUrl).includes('SL-261112-AB12'));
 });
