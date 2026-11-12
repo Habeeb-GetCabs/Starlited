@@ -1,0 +1,8 @@
+{
+  "name": "STARLITES CLOTHING",
+  "description": "STARLITES CLOTHING — Together We Shine. Women's fashion e-commerce storefront featuring tops, matching co-ord sets, nightwear, pajamas, maternity wear, umbrella long tops, and maxi dresses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
