@@ -108,6 +108,24 @@ export async function saveUserDeliveryDefaults(
   }
 }
 
+export function formatAuthErrorMessage(err: unknown): string | null {
+  const raw = err instanceof Error ? err.message : String(err ?? '');
+  if (raw.includes('popup-closed-by-user') || raw.includes('cancelled-popup-request')) {
+    return null;
+  }
+  if (raw.includes('auth/unauthorized-domain')) {
+    const host =
+      typeof window !== 'undefined' && window.location.hostname
+        ? window.location.hostname
+        : 'this domain';
+    return `Domain "${host}" is not authorized for Google Sign-In yet. Add "${host}" in Firebase Console → Authentication → Settings → Authorized domains.`;
+  }
+  if (raw.includes('auth/popup-blocked')) {
+    return 'Google Sign-In popup was blocked by your browser. Please allow popups for this site and try again.';
+  }
+  return raw || 'Unable to complete Google Sign-In. Please try again.';
+}
+
 export async function signInWithGoogle(): Promise<User> {
   const cred = await signInWithPopup(auth, googleProvider);
   return cred.user;

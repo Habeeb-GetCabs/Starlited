@@ -10,7 +10,11 @@ import {
   Truck,
   UserCheck,
 } from 'lucide-react';
-import { signInWithGoogle, type AuthSessionState } from '../services/authService';
+import {
+  formatAuthErrorMessage,
+  signInWithGoogle,
+  type AuthSessionState,
+} from '../services/authService';
 import { getPrimaryImage } from '../services/catalogLogic';
 import { buildOrderWhatsAppUrl, validateCheckoutInput } from '../services/orderLogic';
 import { placeCustomerOrder } from '../services/orderService';
@@ -72,9 +76,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
     try {
       await signInWithGoogle();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unable to sign in.';
-      if (!msg.includes('popup-closed-by-user')) {
-        setErrorMsg(msg);
+      const formatted = formatAuthErrorMessage(err);
+      if (formatted) {
+        setErrorMsg(formatted);
       }
     } finally {
       setSigningIn(false);

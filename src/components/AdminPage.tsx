@@ -21,7 +21,12 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { signInWithGoogle, signOutUser, type AuthSessionState } from '../services/authService';
+import {
+  formatAuthErrorMessage,
+  signInWithGoogle,
+  signOutUser,
+  type AuthSessionState,
+} from '../services/authService';
 import { CATEGORIES, getCategoryLabel, getPrimaryImage } from '../services/catalogLogic';
 import { deleteImageFile, saveImageFile } from '../services/imageStorageService';
 import { ORDER_STATUS_LABELS } from '../services/orderLogic';
@@ -211,9 +216,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     try {
       await signInWithGoogle();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Unable to sign in.';
-      if (!msg.includes('popup-closed-by-user')) {
-        setAuthError(msg);
+      const formatted = formatAuthErrorMessage(err);
+      if (formatted) {
+        setAuthError(formatted);
       }
     } finally {
       setAuthBusy(false);

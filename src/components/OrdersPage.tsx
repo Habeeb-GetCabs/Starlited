@@ -9,7 +9,11 @@ import {
   Truck,
   XCircle,
 } from 'lucide-react';
-import { signInWithGoogle, type AuthSessionState } from '../services/authService';
+import {
+  formatAuthErrorMessage,
+  signInWithGoogle,
+  type AuthSessionState,
+} from '../services/authService';
 import { ORDER_STATUS_LABELS, canCustomerCancelOrder } from '../services/orderLogic';
 import {
   cancelPendingCustomerOrder,
@@ -51,6 +55,7 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [itemsByOrderId, setItemsByOrderId] = useState<Record<string, OrderItem[]>>({});
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     if (initialOrderCode) {
@@ -347,13 +352,27 @@ export const OrdersPage: React.FC<OrdersPageProps> = ({
             </div>
             <button
               type="button"
-              onClick={() => signInWithGoogle()}
+              onClick={async () => {
+                setAuthError('');
+                try {
+                  await signInWithGoogle();
+                } catch (err) {
+                  const formatted = formatAuthErrorMessage(err);
+                  if (formatted) setAuthError(formatted);
+                }
+              }}
               className="inline-flex shrink-0 items-center gap-2 rounded-full bg-[#5A0D3F] px-5 py-2 text-xs font-semibold text-white hover:bg-[#7A1554]"
             >
               <LogIn className="h-3.5 w-3.5" />
               <span>Sign in with Google</span>
             </button>
           </div>
+
+          {authError && (
+            <p className="rounded-xl bg-[#FDF0F3] border border-[#E7B5C6] px-4 py-2.5 text-xs text-[#8C1D5E]">
+              {authError}
+            </p>
+          )}
 
           {guestOrders.length > 0 && (
             <div className="space-y-3">

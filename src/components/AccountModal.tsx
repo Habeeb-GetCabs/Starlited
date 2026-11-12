@@ -8,7 +8,12 @@ import {
   User,
   X,
 } from 'lucide-react';
-import { signInWithGoogle, signOutUser, type AuthSessionState } from '../services/authService';
+import {
+  formatAuthErrorMessage,
+  signInWithGoogle,
+  signOutUser,
+  type AuthSessionState,
+} from '../services/authService';
 import type { AppRoute } from '../types/store';
 
 interface AccountModalProps {
@@ -45,9 +50,9 @@ export const AccountModal: React.FC<AccountModalProps> = ({
     try {
       await signInWithGoogle();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Sign-in could not be completed.';
-      if (!msg.includes('popup-closed-by-user')) {
-        setErrorMsg(msg);
+      const formatted = formatAuthErrorMessage(err);
+      if (formatted) {
+        setErrorMsg(formatted);
       }
     } finally {
       setBusy(false);
